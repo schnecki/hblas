@@ -85,6 +85,10 @@ isBadSymmBothSide :: (Ord a, Num a) => a -> a -> a -> a -> a -> a -> Bool
 isBadSymmBothSide ax ay bx by cx cy = (minimum [ax, ay, bx, by, cx, cy] <= 0)
     || not (ax == ay && bx == cx && by == cy)
 
+
+mkDimText :: (Show a1, Show a2, Show a3, Show a4, Show a5, Show a6) => (a1, a2) -> (a3, a4) -> (a5, a6) -> String
+mkDimText (ax, ay) (bx, by) (cx, cy) = "resulting dimensions: [" ++ show ax ++ "x" ++ show ay ++ "]*[" ++ show bx ++ "x" ++ show by ++ "]=[" ++ show cx ++ "x" ++ show cy ++ "]"
+
 {-
 A key design goal of this ffi is to provide *safe* throughput guarantees
 for a concurrent application built on top of these apis, while evading
@@ -111,13 +115,13 @@ gemmAbstraction gemmName gemmSafeFFI gemmUnsafeFFI constHandler = go
     shouldCallFast :: Int -> Int -> Int -> Bool
     shouldCallFast cy cx ax = flopsThreshold >= gemmComplexity cy cx ax
 
-    mkCords (ax, ay) (bx, by) (cx, cy) = "[" ++ show ax ++ "x" ++ show ay ++ "]*[" ++ show bx ++ "x" ++ show by ++ "]=[" ++ show cx ++ "x" ++ show cy ++ "]"
+
     go  tra trb  alpha beta
         (MutableDenseMatrix ornta ax ay astride abuff)
         (MutableDenseMatrix _ bx by bstride bbuff)
         (MutableDenseMatrix _ cx cy cstride cbuff)
-            |  isBadGemm tra trb  ax ay bx by cx cy = error $! "bad dimension args to GEMM: ax ay bx by cx cy: " ++ show [ax, ay, bx, by, cx ,cy] ++ " \n\tresulting in the dimensions: " ++
-                                                      mkCords (coordSwapper tra (ax,ay)) (coordSwapper trb (bx,by))  (cx,cy)
+            |  isBadGemm tra trb  ax ay bx by cx cy = error $! "bad dimension args to GEMM: ax ay bx by cx cy: " ++ show [ax, ay, bx, by, cx ,cy] ++ " \n\t" ++
+                                                      mkDimText (coordSwapper tra (ax,ay)) (coordSwapper trb (bx,by))  (cx,cy)
             | SM.overlaps abuff cbuff || SM.overlaps bbuff cbuff =
                     error $ "the read and write inputs for: " ++ gemmName ++ " overlap. This is a programmer error. Please fix."
             | otherwise  =
