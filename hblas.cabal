@@ -41,7 +41,6 @@ description:
     is designed so that adding support for new operations is quite easy!
 
 
-
 homepage:      http://github.com/wellposed/hblas/
 bug-reports:   http://github.com/wellposed/hblas/issues
 
@@ -133,10 +132,11 @@ library
    --    -Wall  no wall for now
   -- Other library packages from which modules are imported.
   build-depends:
-        base             >= 4.6    &&  < 4.12,
-        storable-complex >= 0.2.0  &&  < 0.3.0,
-        primitive        >= 0.5    &&  < 0.7  ,
-        vector           >= 0.10 && < 0.13
+        base             >= 4.6    &&  < 5,
+        storable-complex >= 0.2.0,
+        primitive        >= 0.7,
+        primitive-addr   ,
+        vector           >= 0.10
 
 
   if flag(OpenBLAS)
@@ -170,7 +170,6 @@ library
   ghc-options: -Wall -fno-warn-name-shadowing
 
 
-
 Test-suite unit-testsuite
    default-language: Haskell2010
    type: exitcode-stdio-1.0
@@ -188,4 +187,3 @@ Test-suite unit-testsuite
        , primitive
    hs-source-dirs: tests
    main-is: Spec.hs
-
