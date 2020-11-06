@@ -1,4 +1,7 @@
-{-# LANGUAGE BangPatterns , RankNTypes, GADTs, DataKinds #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds    #-}
+{-# LANGUAGE GADTs        #-}
+{-# LANGUAGE RankNTypes   #-}
 
 module Numerical.HBLAS.BLAS.Internal.Level3(
     GemmFun
@@ -22,15 +25,15 @@ module Numerical.HBLAS.BLAS.Internal.Level3(
     ,trsmAbstraction
     ) where
 
-import Numerical.HBLAS.Constants
-import Numerical.HBLAS.UtilsFFI
-import Numerical.HBLAS.BLAS.FFI.Level3
-import Numerical.HBLAS.BLAS.Internal.Utility
-import Numerical.HBLAS.MatrixTypes
-import Control.Monad.Primitive
-import qualified Data.Vector.Storable.Mutable as SM
-import Data.Int
-import Foreign.Ptr
+import           Control.Monad.Primitive
+import           Data.Int
+import qualified Data.Vector.Storable.Mutable          as SM
+import           Foreign.Ptr
+import           Numerical.HBLAS.BLAS.FFI.Level3
+import           Numerical.HBLAS.BLAS.Internal.Utility
+import           Numerical.HBLAS.Constants
+import           Numerical.HBLAS.MatrixTypes
+import           Numerical.HBLAS.UtilsFFI
 
 type GemmFun el orient s m = Transpose -> Transpose ->  el -> el  -> MDenseMatrix s orient el
   ->   MDenseMatrix s orient el  ->  MDenseMatrix s orient el -> m ()
@@ -108,11 +111,13 @@ gemmAbstraction gemmName gemmSafeFFI gemmUnsafeFFI constHandler = go
     shouldCallFast :: Int -> Int -> Int -> Bool
     shouldCallFast cy cx ax = flopsThreshold >= gemmComplexity cy cx ax
 
+    mkCords (ax, ay) (bx, by) (cx, cy) = "[" ++ show ax ++ "x" ++ show ay ++ "]*[" ++ show bx ++ "x" ++ show by ++ "]=[" ++ show cx ++ "x" ++ show cy ++ "]"
     go  tra trb  alpha beta
         (MutableDenseMatrix ornta ax ay astride abuff)
         (MutableDenseMatrix _ bx by bstride bbuff)
         (MutableDenseMatrix _ cx cy cstride cbuff)
-            |  isBadGemm tra trb  ax ay bx by cx cy = error $! "bad dimension args to GEMM: ax ay bx by cx cy: " ++ show [ax, ay, bx, by, cx ,cy]
+            |  isBadGemm tra trb  ax ay bx by cx cy = error $! "bad dimension args to GEMM: ax ay bx by cx cy: " ++ show [ax, ay, bx, by, cx ,cy] ++ " \n\tresulting in the dimensions: " ++
+                                                      mkCords (coordSwapper tra (ax,ay)) (coordSwapper trb (bx,by))  (cx,cy)
             | SM.overlaps abuff cbuff || SM.overlaps bbuff cbuff =
                     error $ "the read and write inputs for: " ++ gemmName ++ " overlap. This is a programmer error. Please fix."
             | otherwise  =
@@ -379,7 +384,7 @@ trmmAbstraction trmmName trmmSafeFFI trmmUnsafeFFI constHandler = trmm
     isBadTrmmBothSide ax ay cx cy = (minimum [ax, ay, cx, cy] <= 0) || not (ax == ay)
 
     isBadTrmm :: (Ord a, Num a) => EquationSide -> a -> a -> a -> a -> Bool
-    isBadTrmm LeftSide ax ay cx cy = isBadTrmmBothSide ax ay cx cy || (ax /= cy)
+    isBadTrmm LeftSide ax ay cx cy  = isBadTrmmBothSide ax ay cx cy || (ax /= cy)
     isBadTrmm RightSide ax ay cx cy = isBadTrmmBothSide ax ay cx cy || (ax /= cx)
 
     -- n * k * n
@@ -418,7 +423,7 @@ trsmAbstraction trsmName trsmSafeFFI trsmUnsafeFFI constHandler = trsm
     isBadTrsmBothSide ax ay cx cy = (minimum [ax, ay, cx, cy] <= 0) || not (ax == ay)
 
     isBadTrsm :: (Ord a, Num a) => EquationSide -> a -> a -> a -> a -> Bool
-    isBadTrsm LeftSide ax ay cx cy = isBadTrsmBothSide ax ay cx cy || (ax /= cy)
+    isBadTrsm LeftSide ax ay cx cy  = isBadTrsmBothSide ax ay cx cy || (ax /= cy)
     isBadTrsm RightSide ax ay cx cy = isBadTrsmBothSide ax ay cx cy || (ax /= cx)
 
     -- n * k * n

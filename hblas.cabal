@@ -124,7 +124,7 @@ library
   -- other-modules:
 
   -- LANGUAGE extensions used by modules in this package.
-  -- other-extensions:
+  other-extensions: NoStarIsType
   --- if flag(lib-Werror)
   ---   ghc-options: -Werror
   --- if flag(lib-Wall)

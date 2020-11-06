@@ -1,9 +1,12 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE CPP  #-}
-{-# LANGUAGE GADTs,ScopedTypeVariables, PolyKinds,FlexibleInstances,DeriveDataTypeable  #-}
-
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE PolyKinds           #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 
 
 {-| PSA, the matrix data types used in the hBLAS binding
@@ -32,13 +35,12 @@ There is a work in progress binding to help this in the numerical-hblas package
 
 module Numerical.HBLAS.MatrixTypes where
 
-import qualified Data.Vector.Storable as S
+import           Control.Monad.Primitive
+import           Data.Kind                    (Type)
+import qualified Data.Vector.Storable         as S
 import qualified Data.Vector.Storable.Mutable as SM
-import Control.Monad.Primitive
 
-import Data.Typeable
-
-
+import           Data.Typeable
 
 
 {-
@@ -65,7 +67,6 @@ data EVector  :: * -> * -> * where
 --    MutVector :: SM.MVector s e -> EVector (Mut s) el
 
 
-
 --data Eff = Pure | Mut
 
 --data EVector  :: Eff -> * -> * -> * where
@@ -79,7 +80,7 @@ data Orientation = Row | Column
 type Row = 'Row
 type Column = 'Column
 
-data SOrientation :: Orientation -> * where
+data SOrientation :: Orientation -> Type where
     SRow :: SOrientation Row
     SColumn :: SOrientation Column
   deriving (Typeable)
@@ -90,15 +91,13 @@ instance Ord (SOrientation a) where
 
 
 instance Show (SOrientation a) where
-     show SRow = "SRow"
+     show SRow    = "SRow"
      show SColumn = "SColumn"
-
-
 
 
 sTranpose ::  (x~ TransposeF y, y~TransposeF x ) =>SOrientation x -> SOrientation y
 sTranpose SColumn = SRow
-sTranpose SRow = SColumn
+sTranpose SRow    = SColumn
 
 
 --- | Many Blas and Lapack routines allow you to implicitly tranpose your argumments
@@ -147,11 +146,11 @@ data Variant = Direct | Implicit
 -- this notion only makes sense in the 1dim case.
 -- If you don't understand this parameter, just use 'SDirect' and 'Direct'
 -- as they will generally be the correct choice for most users.
-data SVariant :: Variant -> * where
+data SVariant :: Variant -> Type where
     SImplicit :: {_frontPadding ::{-UNPACK-} !Int, _endPadding:: {-#UNPACK#-} !Int } -> SVariant 'Implicit
     SDirect :: SVariant 'Direct
 
-data DenseVector :: Variant -> * -> * where
+data DenseVector :: Variant -> Type -> Type where
     DenseVector :: { _VariantDenseVect ::  !(SVariant varnt)
                     ,_LogicalDimDenseVector :: {-#UNPACK#-}!Int
                     ,_StrideDenseVector :: {-#UNPACK#-} ! Int
@@ -161,7 +160,7 @@ data DenseVector :: Variant -> * -> * where
   deriving (Typeable)
 #endif
 
-data MDenseVector :: * -> Variant -> * -> * where
+data MDenseVector :: Type -> Variant -> Type -> Type where
     MutableDenseVector :: { _VariantMutDenseVect ::  !(SVariant varnt)
                         ,_LogicalDimMutDenseVector :: {-#UNPACK#-}!Int
                         ,_StrideMutDenseVector :: {-#UNPACK#-} ! Int
@@ -172,7 +171,7 @@ data MDenseVector :: * -> Variant -> * -> * where
 #endif
 
 -- | 'DenseMatrix' is for dense row or column major matrices
-data DenseMatrix :: Orientation -> * -> *  where
+data DenseMatrix :: Orientation -> Type -> Type  where
     DenseMatrix ::{ _OrientationMat :: SOrientation ornt ,
                     _XdimDenMat :: {-# UNPACK #-}!Int,
                     _YdimDenMat :: {-# UNPACK #-}!Int ,
@@ -187,7 +186,6 @@ data DenseMatrix :: Orientation -> * -> *  where
 -- | toList routine for pure matrices
 -- TODO
 -- this should build on top of a traverse/mapM style routine like the mapper etc
-
 
 
 -- | this should never be used in real code, ever ever, but its handy for testing
@@ -222,7 +220,7 @@ need to handle rendering a slice differently than a direct matrix
 --             | otherwise = show $ mapDenseMatrix id mat
 
 -- | 'MDenseMatrix'
-data MDenseMatrix :: *  ->Orientation  -> * -> *  where
+data MDenseMatrix :: Type -> Orientation  -> Type -> Type  where
     MutableDenseMatrix :: { _OrientationMutMat :: SOrientation ornt ,
                             _XdimDenMutMat :: {-# UNPACK #-}!Int ,
                             --- change --XDIM to leading Dim
@@ -289,7 +287,6 @@ getDenseMatrixOrientation :: DenseMatrix or elem -> SOrientation or
 getDenseMatrixOrientation m = _OrientationMat m
 
 
-
 uncheckedDenseMatrixIndex :: (S.Storable elem )=>  DenseMatrix or elem -> (Int,Int) -> elem
 uncheckedDenseMatrixIndex (DenseMatrix SRow _ _ ystride arr) =  \ (x,y)-> arr `S.unsafeIndex` (x + y * ystride)
 uncheckedDenseMatrixIndex (DenseMatrix SColumn _ _ xstride arr) = \ (x,y)-> arr `S.unsafeIndex`  (y + x* xstride)
@@ -330,7 +327,6 @@ uncheckedDenseMatrixNextTuple (DenseMatrix SColumn xdim ydim _ _ ) =
                                                         --- dont need the swap for column major
 
 
-
 -- | generateDenseMatrix Row (k,k) \(i,j)-> if i == j then 1.0 else 0.0 would generate a KxK identity matrix
 generateDenseMatrix :: (S.Storable a)=> SOrientation x -> (Int,Int)->((Int,Int)-> a) -> DenseMatrix x a
 generateDenseMatrix SRow (xdim,ydim) f = DenseMatrix SRow  xdim ydim xdim $!
@@ -340,8 +336,6 @@ generateDenseMatrix SRow (xdim,ydim) f = DenseMatrix SRow  xdim ydim xdim $!
 generateDenseMatrix SColumn (xdim,ydim) f = DenseMatrix SColumn xdim ydim ydim $!
          S.generate (xdim * ydim ) (\ix -> let  ixtup@(!_,!_) = ( quotRem ix ydim ) in
                                          f ixtup )
-
-
 
 
 -- | mutable version of generateDenseMatrix
@@ -374,7 +368,6 @@ generateMutableDenseVector :: (S.Storable a,PrimMonad m) => Int -> (Int -> a) ->
 generateMutableDenseVector size init = do
     mv <- S.unsafeThaw $ S.generate size init
     return $! MutableDenseVector SDirect size 1 mv
-
 
 
 --generateMutableDenseVectorWithStride is for testing only, never use it
@@ -424,11 +417,7 @@ transposeDenseMatrix :: (inor ~ (TransposeF outor) ,   outor ~ (TransposeF inor)
 transposeDenseMatrix (DenseMatrix orient x y stride arr)= (DenseMatrix (sTranpose orient) y x stride arr)
 
 
-
 {-
 need an init with index/ map with index, etc utils≤
 
 -}
-
-
-
