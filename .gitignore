@@ -6,3 +6,5 @@ cabal.sandbox.config
 *.so
 *.hi
 dist/
+/stack.yaml.lock
+/.stack-work/
