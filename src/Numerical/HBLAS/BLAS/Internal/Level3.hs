@@ -87,7 +87,7 @@ isBadSymmBothSide ax ay bx by cx cy = (minimum [ax, ay, bx, by, cx, cy] <= 0)
 
 
 mkDimText :: (Show a1, Show a2, Show a3, Show a4, Show a5, Show a6) => (a1, a2) -> (a3, a4) -> (a5, a6) -> String
-mkDimText (ax, ay) (bx, by) (cx, cy) = "resulting dimensions: [" ++ show ax ++ "x" ++ show ay ++ "]*[" ++ show bx ++ "x" ++ show by ++ "]=[" ++ show cx ++ "x" ++ show cy ++ "]"
+mkDimText (ax, ay) (bx, by) (cx, cy) = "resulting dimensions: [" ++ show bx ++ "x" ++ show by ++ "]*[" ++ show ax ++ "x" ++ show ay ++ "]=[" ++ show cx ++ "x" ++ show cy ++ "]"
 
 {-
 A key design goal of this ffi is to provide *safe* throughput guarantees
